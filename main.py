@@ -7,6 +7,7 @@ from database.db_manager import DBManager
 from font_manager import FontManager
 from left_panel import left_panel
 from right_panel import right_panel
+from sync.get_sync import get_sync_to_db, get_sync_to_serv
 from v_separator import v_separator
 
 
@@ -17,6 +18,7 @@ class MyWindow(QWidget):
 
         self.db_manager = DBManager()
         self.settings = self.db_manager.get_settings()
+        get_sync_to_db(self)
         self.sorting = self.settings[0]
         self.height = self.settings[1]
         self.width = self.settings[2]
@@ -52,6 +54,10 @@ class MyWindow(QWidget):
         new_size = self.size()
         self.db_manager.update_window_size(new_size.height(), new_size.width())
         super().resizeEvent(event)
+
+    def closeEvent(self, event):
+        get_sync_to_serv(self)
+        event.accept()
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 """
 Модуль работы с БД и шифрованием
 """
+import json
 import sqlite3
 
 from database.decrypt import decrypt
@@ -206,6 +207,121 @@ class DBManager:
             self.cursor.execute(sql_update_query, params)
             self.conn.commit()
         self.save_current_label(index, note)
+
+    def creds(self):
+        self.cursor.execute('SELECT uname, pwwd FROM setting WHERE id = ?', (1,))
+        uname, pwwd = self.cursor.fetchone()
+        return uname, pwwd
+
+    def sync(self):
+        self.cursor.execute('SELECT uname, pwwd, sorting FROM setting WHERE id = ?', (1,))
+        uname, pwwd, sorting = self.cursor.fetchone()
+        clear_notes = []
+        clear_labels = []
+
+        if pwwd is not None:
+
+            # Получаем все заметки для данного пользователя
+            self.cursor.execute('SELECT * FROM notes')
+            notes = self.cursor.fetchall()
+            for note in notes:  # Итерируемся по каждой заметке
+                clear_notes.append({
+                    "id": note[0],
+                    "theme": deobfuscate(note[1]),
+                    "text": decrypt(note[2]),
+                    "label": note[3],
+                    "tags": note[4],
+                    "ch_data": note[5],
+                    "deleted": note[6],
+                    "uid1": note[7],
+                    "uid2": note[8]
+                })
+
+            # Получаем все метки для данного пользователя
+            self.cursor.execute('SELECT * FROM labels')
+            labels = self.cursor.fetchall()
+            for label in labels:  # Итерируемся по каждой заметке
+                clear_labels.append({
+                    "id": label[0],
+                    "name": deobfuscate(label[1]),
+                    "color1": deobfuscate(label[2]),
+                    "color2": deobfuscate(label[3]),
+                    "uid1": label[4],
+                    "uid2": label[5]
+                })
+
+            # Формируем JSON-ответ
+            response = {
+                "login": uname,
+                "password": pwwd,
+                'sorting': sorting,
+                'notes': clear_notes,
+                'labels': clear_labels
+            }
+
+            return json.dumps(response, ensure_ascii=False)
+
+    def update_note(self, note, parent):
+        theme = note['theme']
+        text = note['text']
+        label = parent.id_labels_sync[int(note['label'])]
+        tags = note['tags']
+        ch_data = note['ch_data']
+        deleted = note['deleted']
+        uid1 = note['uid1']
+        uid2 = note['uid2']
+        self.cursor.execute('SELECT id, ch_data FROM notes WHERE uid1 = ? AND uid2 = ?', (uid1, uid2,))
+        result = self.cursor.fetchone()
+
+        if result is not None:
+            id_note, ch_data_bd = result
+
+            if id_note:
+                if ch_data_bd < ch_data:
+                    self.cursor.execute('''
+                    UPDATE notes
+                     SET theme = ?, text = ?, label = ?, tags = ?, ch_data = ?, deleted = ?
+                   WHERE id = ?
+                ''', (obfuscate(theme), encrypt(text), label, tags, ch_data, deleted, id_note))
+            else:
+                self.cursor.execute('''
+                 INSERT INTO notes (theme, text, label, tags, deleted, uid1, uid2)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                                    (obfuscate(theme), encrypt(text), label, tags, deleted, uid1, uid2))
+        else:
+            self.cursor.execute('''
+                             INSERT INTO notes (theme, text, label, tags, deleted, uid1, uid2)
+                             VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                                (obfuscate(theme), encrypt(text), label, tags, deleted, uid1, uid2))
+        self.conn.commit()
+
+    def update_label(self, label, parent):
+        id_label = label['id']
+        name = label['name']
+        color1 = label['color1']
+        color2 = label['color2']
+        uid1 = label['uid1']
+        uid2 = label['uid2']
+        self.cursor.execute('SELECT id FROM labels WHERE uid1 = ? AND uid2 = ?', (uid1, uid2,))
+        id_label_db = self.cursor.fetchone()
+
+        if id_label_db is not None:
+            id_label_db = id_label_db[0]
+            parent.id_labels_sync[id_label] = id_label_db
+
+            self.cursor.execute('''
+                UPDATE labels
+                SET name = ?, color1 = ?, color2 = ?
+                WHERE id = ?
+            ''', (obfuscate(name), obfuscate(color1), obfuscate(color2), id_label))
+        else:
+            self.cursor.execute('''
+                 INSERT INTO labels (name, color1, color2, uid1, uid2)
+                 VALUES (?, ?, ?, ?, ?)''',
+                                (obfuscate(name), obfuscate(color1), obfuscate(color2), uid1, uid2))
+            id_label_db = self.cursor.lastrowid
+            parent.id_labels_sync[id_label] = id_label_db
+        self.conn.commit()
 
     def close(self):
         self.conn.close()
