@@ -2,6 +2,8 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QPushButton, QHBoxLayout
 
+from logic.click_logic import on_user_button_clicked
+
 
 def right_menu(parent):
     parent.right_menu_layout = QHBoxLayout(parent)  # Задаем родительский виджет для Layout
@@ -30,3 +32,4 @@ def right_menu(parent):
     parent.right_menu_layout.addWidget(parent.user_button)
 
     parent.right_layout.addLayout(parent.right_menu_layout)
+    parent.user_button.clicked.connect(lambda: on_user_button_clicked(parent))

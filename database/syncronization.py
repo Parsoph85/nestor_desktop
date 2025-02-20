@@ -15,5 +15,3 @@ def synchronization_from_server_to_db(data, parent):
 
     for note in notes:
         db_manager.update_note(note, parent)
-
-

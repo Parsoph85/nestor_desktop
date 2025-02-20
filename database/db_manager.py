@@ -323,5 +323,11 @@ class DBManager:
             parent.id_labels_sync[id_label] = id_label_db
         self.conn.commit()
 
+    def save_creds(self, login, password):
+        self.cursor.execute('''
+                        UPDATE setting SET uname = ?, pwwd = ? WHERE id = ?
+                    ''', (login, password, 1))
+        self.conn.commit()
+
     def close(self):
         self.conn.close()

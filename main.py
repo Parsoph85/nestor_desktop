@@ -7,7 +7,7 @@ from database.db_manager import DBManager
 from font_manager import FontManager
 from left_panel import left_panel
 from right_panel import right_panel
-from sync.get_sync import get_sync_to_db, get_sync_to_serv
+from sync.get_sync import get_sync_to_db, get_sync_to_serv, check_creds
 from v_separator import v_separator
 
 
@@ -16,6 +16,7 @@ class MyWindow(QWidget):
         super().__init__()
         self.setWindowIcon(QIcon('img/icon.png'))
 
+        self.address = "http://127.0.0.1:5000/"
         self.db_manager = DBManager()
         self.settings = self.db_manager.get_settings()
         get_sync_to_db(self)
@@ -56,7 +57,10 @@ class MyWindow(QWidget):
         super().resizeEvent(event)
 
     def closeEvent(self, event):
-        get_sync_to_serv(self)
+        login, password = self.db_manager.creds()
+        check = check_creds(self, login, password)
+        if check:
+            get_sync_to_serv(self)
         event.accept()
 
 

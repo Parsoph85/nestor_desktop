@@ -1,5 +1,6 @@
 from PyQt5.QtCore import Qt
 
+from auth.main_auth import MainAuthDialog
 from label_edit.main_label import MainLabelDialog
 from logic.reload import reload
 from logic.theme_click_logic import current_button
@@ -20,8 +21,9 @@ def on_delete_button_clicked(parent):
     current_button(parent.current_theme, parent)
 
 
-def on_user_button_clicked():
-    pass
+def on_user_button_clicked(parent):
+    auth_dialog = MainAuthDialog(parent)
+    auth_dialog.exec_()
 
 
 def on_label_clicked(event, index, parent):
